@@ -4,13 +4,13 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PlayArrow
@@ -18,13 +18,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.fecunion.model.ProcessResult
+import com.example.fecunion.model.TripleResult
 import java.io.File
 import java.text.DecimalFormat
 
@@ -39,7 +44,10 @@ fun FileSelectScreen(viewModel: MainViewModel) {
     val minSize by viewModel.minSize.collectAsState()
     val maxN by viewModel.maxN.collectAsState()
     val leafSize by viewModel.leafSize.collectAsState()
-    val result by viewModel.result.collectAsState()
+    val algorithm by viewModel.algorithm.collectAsState()
+    val comparisonMode by viewModel.comparisonMode.collectAsState()
+    val singleResult by viewModel.singleResult.collectAsState()
+    val tripleResult by viewModel.tripleResult.collectAsState()
     val running by viewModel.running.collectAsState()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -122,7 +130,7 @@ fun FileSelectScreen(viewModel: MainViewModel) {
                     } else {
                         assets.forEach { asset ->
                             TextButton(
-                                onClick = { viewModel.runSample(context, asset, asset.substringBeforeLast('.')) },
+                                onClick = { viewModel.loadAsset(context, asset, asset.substringBeforeLast('.')) },
                                 enabled = !running,
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                                 modifier = Modifier.fillMaxWidth()
@@ -145,7 +153,54 @@ fun FileSelectScreen(viewModel: MainViewModel) {
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("参数设置", style = MaterialTheme.typography.titleMedium)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("参数设置", style = MaterialTheme.typography.titleMedium)
+                        TextButton(onClick = { viewModel.resetParams() }) { Text("重置默认") }
+                    }
+
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = !comparisonMode,
+                            onClick = { viewModel.setComparisonMode(false) },
+                            label = { Text("单算法") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = comparisonMode,
+                            onClick = { viewModel.setComparisonMode(true) },
+                            label = { Text("对比模式") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (!comparisonMode) {
+                        val algOptions = listOf("FECunion", "FEC", "EC")
+                        var algExpanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = algExpanded,
+                            onExpandedChange = { algExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = algOptions[algorithm],
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("算法") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = algExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = algExpanded,
+                                onDismissRequest = { algExpanded = false }
+                            ) {
+                                algOptions.forEachIndexed { i, name ->
+                                    DropdownMenuItem(
+                                        text = { Text(name) },
+                                        onClick = { viewModel.setAlgorithm(i); algExpanded = false }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Text("搜索半径 (tolerance)", style = MaterialTheme.typography.labelMedium)
                     OutlinedTextField(
@@ -217,53 +272,151 @@ fun FileSelectScreen(viewModel: MainViewModel) {
                 }
             }
 
-            result?.let { ResultCard(it) }
+            if (comparisonMode) {
+                tripleResult?.let { ComparisonCard(it) }
+            } else {
+                singleResult?.let { SingleResultCard(it, algorithm) }
+            }
+        }
+    }
+}
+
+private val ALGO_NAMES = listOf("FECunion", "FEC", "EC")
+private val ALGO_COLORS = listOf(0xFF1565C0, 0xFF00897B, 0xFFE65100)
+
+private data class TimingRow(val label: String, val fecunion: Double, val fec: Double, val ec: Double)
+
+@Composable
+private fun SingleResultCard(r: ProcessResult, algoIdx: Int) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (!r.ok) {
+                Text("${ALGO_NAMES[algoIdx]}: ${r.error}", color = MaterialTheme.colorScheme.error)
+                return@Column
+            }
+
+            Text("结果 — ${ALGO_NAMES[algoIdx]}", style = MaterialTheme.typography.titleMedium)
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("点云点数"); Text("${r.pointCount}")
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("簇数量"); Text("${r.clusters.size}")
+            }
+
+            HorizontalDivider()
+
+            Text("耗时", style = MaterialTheme.typography.titleSmall)
+            val df = DecimalFormat("0.0000")
+            TimeRow("建树 Build", r.buildMs, df)
+            TimeRow("搜索 Search", r.searchMs, df)
+            TimeRow("合并 Merge", r.mergeMs, df)
+            TimeRow("后处理 Final", r.finalMs, df)
+            TimeRow("总计 Total", r.totalMs, df, bold = true)
+
+            HorizontalDivider()
+
+            HorizontalBarChart(r.clusters.map { it.size }, ALGO_NAMES[algoIdx], Color(ALGO_COLORS[algoIdx]))
         }
     }
 }
 
 @Composable
-private fun ResultCard(r: ProcessResult) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-        containerColor = if (r.ok) MaterialTheme.colorScheme.surface
-        else MaterialTheme.colorScheme.errorContainer
-    )) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!r.ok) {
-                Text("错误: ${r.error}", color = MaterialTheme.colorScheme.error)
-                return@Column
-            }
+private fun TimeRow(label: String, ms: Double, df: DecimalFormat, bold: Boolean = false) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+        Text("${df.format(ms)} ms", fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+    }
+}
 
-            Text("结果", style = MaterialTheme.typography.titleMedium)
+@Composable
+private fun ComparisonCard(r: TripleResult) {
+    if (!r.allOk) {
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                listOf(r.fecunion, r.fec, r.ec).forEachIndexed { i, pr ->
+                    if (!pr.ok) Text("${ALGO_NAMES[i]}: ${pr.error}", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+        return
+    }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("点云点数")
-                Text("${r.pointCount}")
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("簇数量")
-                Text("${r.clusters.size}")
-            }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("结果 — 对比", style = MaterialTheme.typography.titleMedium)
+
+            Text(
+                "点数: ${r.fecunion.pointCount}  |  "
+                + "簇数 — FECunion: ${r.fecunion.clusters.size}, FEC: ${r.fec.clusters.size}, EC: ${r.ec.clusters.size}",
+                style = MaterialTheme.typography.bodyMedium
+            )
 
             HorizontalDivider()
 
-            Text("耗时统计", style = MaterialTheme.typography.titleSmall)
-            TimeStatRow("建树 (build)", r.buildMs)
-            TimeStatRow("搜索 (search)", r.searchMs)
-            TimeStatRow("合并 (merge)", r.mergeMs)
-            TimeStatRow("后处理 (final)", r.finalMs)
-            TimeStatRow("总计 (total)", r.totalMs, bold = true)
+            TimingTable(r)
 
-            if (r.clusters.isNotEmpty()) {
-                HorizontalDivider()
-                Text("簇大小分布 (前20)", style = MaterialTheme.typography.titleSmall)
-                Text(
-                    r.clusters.take(20).joinToString(", ") { "#${it.index}:${it.size}" },
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                if (r.clusters.size > 20) {
-                    Text("... 还有 ${r.clusters.size - 20} 个簇", style = MaterialTheme.typography.bodySmall)
+            HorizontalDivider()
+
+            Text("簇大小分布", style = MaterialTheme.typography.titleSmall)
+            ALGO_NAMES.forEachIndexed { i, name ->
+                val result = listOf(r.fecunion, r.fec, r.ec)[i]
+                HorizontalBarChart(result.clusters.map { it.size }, name, Color(ALGO_COLORS[i]))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimingTable(r: TripleResult) {
+    val df = DecimalFormat("0.0000")
+    val rows = listOf(
+        TimingRow("建树", r.fecunion.buildMs, r.fec.buildMs, r.ec.buildMs),
+        TimingRow("搜索", r.fecunion.searchMs, r.fec.searchMs, r.ec.searchMs),
+        TimingRow("合并", r.fecunion.mergeMs, r.fec.mergeMs, 0.0),
+        TimingRow("后处理", r.fecunion.finalMs, r.fec.finalMs, r.ec.finalMs),
+        TimingRow("总计", r.fecunion.totalMs, r.fec.totalMs, r.ec.totalMs),
+    )
+
+    Text("耗时 (ms)", style = MaterialTheme.typography.titleSmall)
+
+    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+            Text("", Modifier.width(56.dp))
+            ALGO_NAMES.forEachIndexed { i, name ->
+                Text(name, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall,
+                    color = Color(ALGO_COLORS[i]), maxLines = 1)
+            }
+        }
+        rows.forEach { row ->
+            val isTotal = row.label == "总计"
+            Row(
+                Modifier.fillMaxWidth()
+                    .background(if (isTotal) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else Color.Transparent)
+                    .padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(row.label, Modifier.width(56.dp),
+                    style = if (isTotal) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodySmall,
+                    fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal)
+                val vs = listOf(row.fecunion, row.fec, row.ec)
+                val ecMerge = row.label == "合并"
+                vs.forEachIndexed { i, v ->
+                    val valid = vs.filterIndexed { j, _ -> !(ecMerge && j == 2) }
+                    val fastest = valid.minOrNull()
+                    val isBest = v == fastest && !(ecMerge && i == 2) && (fastest ?: 0.0) > 0.0
+                    Text(
+                        if (ecMerge && i == 2) "-" else df.format(v),
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                        color = if (isBest) Color(0xFF2E7D32) else Color.Unspecified,
+                        fontWeight = if (isBest) FontWeight.Bold else FontWeight.Normal, maxLines = 1
+                    )
                 }
             }
         }
@@ -271,14 +424,31 @@ private fun ResultCard(r: ProcessResult) {
 }
 
 @Composable
-private fun TimeStatRow(label: String, ms: Double, bold: Boolean = false) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = if (bold) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall)
-        Text(
-            if (ms < 1000) "${DecimalFormat("0.0").format(ms)} ms"
-            else "${DecimalFormat("0.00").format(ms / 1000.0)} s",
-            style = if (bold) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace
-        )
+private fun HorizontalBarChart(sizes: List<Int>, title: String, color: Color) {
+    Column(Modifier.padding(top = 4.dp)) {
+        Text("$title (${sizes.size} 个簇)", style = MaterialTheme.typography.labelMedium,
+            color = color.copy(alpha = 0.9f))
+        Spacer(Modifier.height(4.dp))
+        val maxSize = sizes.maxOrNull() ?: 1
+        val display = sizes.take(10)
+        display.forEachIndexed { i, sz ->
+            val frac = sz.toFloat() / maxSize
+            Row(Modifier.fillMaxWidth().height(14.dp).padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("#$i", Modifier.width(32.dp), style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace, maxLines = 1)
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(frac).background(color.copy(alpha = 0.7f)))
+                }
+                Spacer(Modifier.width(4.dp))
+                Text("$sz", Modifier.width(40.dp), style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace, maxLines = 1,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            }
+        }
+        if (sizes.size > 10) {
+            Text("... 还有 ${sizes.size - 10} 个簇", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

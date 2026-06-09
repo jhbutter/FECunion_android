@@ -10,6 +10,7 @@ object FECunionBridge {
         tolerance: Double,
         minSize: Int,
         maxN: Int,
-        leafSize: Int
+        leafSize: Int,
+        algorithm: Int
     ): String
 }
