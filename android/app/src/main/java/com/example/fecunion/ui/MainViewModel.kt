@@ -36,6 +36,7 @@ class MainViewModel : ViewModel() {
     private val _comparisonMode = MutableStateFlow(false)
     val comparisonMode: StateFlow<Boolean> = _comparisonMode
 
+    private val _resultCache = arrayOfNulls<ProcessResult>(3)
     private val _singleResult = MutableStateFlow<ProcessResult?>(null)
     val singleResult: StateFlow<ProcessResult?> = _singleResult
 
@@ -49,6 +50,7 @@ class MainViewModel : ViewModel() {
     val fileName: StateFlow<String> = _fileName
 
     fun setFilePath(path: String, name: String) {
+        _resultCache.fill(null)
         _singleResult.value = null
         _tripleResult.value = null
         _filePath.value = path
@@ -59,8 +61,10 @@ class MainViewModel : ViewModel() {
     fun setMinSize(v: Int) { _minSize.value = v }
     fun setMaxN(v: Int) { _maxN.value = v }
     fun setLeafSize(v: Int) { _leafSize.value = v.coerceIn(5, 200) }
-    fun setAlgorithm(v: Int) { _algorithm.value = v.coerceIn(0, 2) }
-    fun setComparisonMode(v: Boolean) { _comparisonMode.value = v }
+    fun setAlgorithm(v: Int) { _algorithm.value = v.coerceIn(0, 2); _singleResult.value = _resultCache[_algorithm.value] }
+    fun setComparisonMode(v: Boolean) { _comparisonMode.value = v; if (v) _tripleResult.value = cachedTriple() }
+
+    private fun cachedTriple() = TripleResult(_resultCache[0], _resultCache[1], _resultCache[2])
 
     fun resetParams() {
         _tolerance.value = 0.5
@@ -99,12 +103,20 @@ class MainViewModel : ViewModel() {
         val path = _filePath.value ?: return
         viewModelScope.launch {
             _running.value = true
-            _singleResult.value = null
-            _tripleResult.value = null
             if (_comparisonMode.value) {
-                _tripleResult.value = runAll(path)
+                _singleResult.value = null
+                _tripleResult.value = null
+                val r = runAll(path)
+                _resultCache[0] = r.fecunion
+                _resultCache[1] = r.fec
+                _resultCache[2] = r.ec
+                _singleResult.value = _resultCache[_algorithm.value]
+                _tripleResult.value = r
             } else {
-                _singleResult.value = runSingle(path)
+                val r = runSingle(path)
+                _resultCache[_algorithm.value] = r
+                _singleResult.value = r
+                _tripleResult.value = cachedTriple()
             }
             _running.value = false
         }
@@ -112,6 +124,7 @@ class MainViewModel : ViewModel() {
 
     fun loadAsset(context: Context, assetName: String, displayName: String) {
         viewModelScope.launch {
+            _resultCache.fill(null)
             _singleResult.value = null
             _tripleResult.value = null
             _fileName.value = displayName

@@ -284,7 +284,7 @@ fun FileSelectScreen(viewModel: MainViewModel) {
 private val ALGO_NAMES = listOf("FECunion", "FEC", "EC")
 private val ALGO_COLORS = listOf(0xFF1565C0, 0xFF00897B, 0xFFE65100)
 
-private data class TimingRow(val label: String, val fecunion: Double, val fec: Double, val ec: Double)
+private data class TimingRow(val label: String, val fecunion: Double?, val fec: Double?, val ec: Double?)
 
 @Composable
 private fun SingleResultCard(r: ProcessResult, algoIdx: Int) {
@@ -334,28 +334,23 @@ private fun TimeRow(label: String, ms: Double, df: DecimalFormat, bold: Boolean 
 
 @Composable
 private fun ComparisonCard(r: TripleResult) {
-    if (!r.allOk) {
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                listOf(r.fecunion, r.fec, r.ec).forEachIndexed { i, pr ->
-                    if (!pr.ok) Text("${ALGO_NAMES[i]}: ${pr.error}", color = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-        return
-    }
+    val results = listOf(r.fecunion, r.fec, r.ec)
+    val errors = results.mapIndexedNotNull { i, pr -> if (pr != null && !pr.ok) i to pr.error else null }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("结果 — 对比", style = MaterialTheme.typography.titleMedium)
 
-            Text(
-                "点数: ${r.fecunion.pointCount}  |  "
-                + "簇数 — FECunion: ${r.fecunion.clusters.size}, FEC: ${r.fec.clusters.size}, EC: ${r.ec.clusters.size}",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            val pointCount = results.filterNotNull().firstOrNull()?.pointCount ?: 0
+            val clusterInfo = ALGO_NAMES.mapIndexed { i, name ->
+                val sz = results[i]?.clusters?.size
+                if (sz != null) "$name: $sz" else "$name: -"
+            }.joinToString(", ")
+            Text("点数: $pointCount  |  簇数 — $clusterInfo", style = MaterialTheme.typography.bodyMedium)
+
+            errors.forEach { (i, err) ->
+                Text("${ALGO_NAMES[i]}: $err", color = MaterialTheme.colorScheme.error)
+            }
 
             HorizontalDivider()
 
@@ -365,8 +360,13 @@ private fun ComparisonCard(r: TripleResult) {
 
             Text("簇大小分布", style = MaterialTheme.typography.titleSmall)
             ALGO_NAMES.forEachIndexed { i, name ->
-                val result = listOf(r.fecunion, r.fec, r.ec)[i]
-                HorizontalBarChart(result.clusters.map { it.size }, name, Color(ALGO_COLORS[i]))
+                val result = results[i]
+                if (result != null && result.ok) {
+                    HorizontalBarChart(result.clusters.map { it.size }, name, Color(ALGO_COLORS[i]))
+                } else {
+                    Text("$name: -", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
@@ -375,12 +375,13 @@ private fun ComparisonCard(r: TripleResult) {
 @Composable
 private fun TimingTable(r: TripleResult) {
     val df = DecimalFormat("0.0000")
+    val a = r.fecunion; val b = r.fec; val c = r.ec
     val rows = listOf(
-        TimingRow("建树", r.fecunion.buildMs, r.fec.buildMs, r.ec.buildMs),
-        TimingRow("搜索", r.fecunion.searchMs, r.fec.searchMs, r.ec.searchMs),
-        TimingRow("合并", r.fecunion.mergeMs, r.fec.mergeMs, 0.0),
-        TimingRow("后处理", r.fecunion.finalMs, r.fec.finalMs, r.ec.finalMs),
-        TimingRow("总计", r.fecunion.totalMs, r.fec.totalMs, r.ec.totalMs),
+        TimingRow("建树", a?.buildMs, b?.buildMs, c?.buildMs),
+        TimingRow("搜索", a?.searchMs, b?.searchMs, c?.searchMs),
+        TimingRow("合并", a?.mergeMs, b?.mergeMs, null),
+        TimingRow("后处理", a?.finalMs, b?.finalMs, c?.finalMs),
+        TimingRow("总计", a?.totalMs, b?.totalMs, c?.totalMs),
     )
 
     Text("耗时 (ms)", style = MaterialTheme.typography.titleSmall)
@@ -405,13 +406,13 @@ private fun TimingTable(r: TripleResult) {
                     style = if (isTotal) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodySmall,
                     fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal)
                 val vs = listOf(row.fecunion, row.fec, row.ec)
+                val valid = vs.filterNotNull()
+                val fastest = valid.minOrNull()
                 val ecMerge = row.label == "合并"
                 vs.forEachIndexed { i, v ->
-                    val valid = vs.filterIndexed { j, _ -> !(ecMerge && j == 2) }
-                    val fastest = valid.minOrNull()
-                    val isBest = v == fastest && !(ecMerge && i == 2) && (fastest ?: 0.0) > 0.0
+                    val isBest = v != null && v == fastest && (fastest ?: 0.0) > 0.0 && valid.size > 1
                     Text(
-                        if (ecMerge && i == 2) "-" else df.format(v),
+                        if (ecMerge && i == 2) "-" else (v?.let { df.format(it) } ?: "-"),
                         Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
                         color = if (isBest) Color(0xFF2E7D32) else Color.Unspecified,
@@ -430,12 +431,14 @@ private fun HorizontalBarChart(sizes: List<Int>, title: String, color: Color) {
             color = color.copy(alpha = 0.9f))
         Spacer(Modifier.height(4.dp))
         val maxSize = sizes.maxOrNull() ?: 1
-        val display = sizes.take(10)
-        display.forEachIndexed { i, sz ->
+        val display = sizes.mapIndexed { idx, sz -> idx to sz }
+            .sortedByDescending { it.second }
+            .take(10)
+        display.forEachIndexed { i, (origIdx, sz) ->
             val frac = sz.toFloat() / maxSize
             Row(Modifier.fillMaxWidth().height(14.dp).padding(vertical = 1.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Text("#$i", Modifier.width(32.dp), style = MaterialTheme.typography.labelSmall,
+                Text("#$origIdx", Modifier.width(32.dp), style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace, maxLines = 1)
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(frac).background(color.copy(alpha = 0.7f)))

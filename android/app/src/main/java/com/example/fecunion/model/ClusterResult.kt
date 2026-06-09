@@ -51,3 +51,11 @@ data class ProcessResult(
         }
     }
 }
+
+data class TripleResult(
+    val fecunion: ProcessResult?,
+    val fec: ProcessResult?,
+    val ec: ProcessResult?
+) {
+    val allOk get() = listOfNotNull(fecunion, fec, ec).all { it.ok }
+}

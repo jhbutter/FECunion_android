@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 簇1 蓝色 大簇 左偏上 -->
+    <path android:fillColor="#FF1976D2" android:pathData="M43,34m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF42A5F5" android:pathData="M46,31m2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"/>
+    <path android:fillColor="#FF1E88E5" android:pathData="M39,38m2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"/>
+    <path android:fillColor="#FF64B5F6" android:pathData="M44,39m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF2196F3" android:pathData="M48,37m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF42A5F5" android:pathData="M37,42m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF90CAF9" android:pathData="M41,35m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF1E88E5" android:pathData="M45,44m2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"/>
+    <path android:fillColor="#FF2196F3" android:pathData="M50,41m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF64B5F6" android:pathData="M38,46m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF42A5F5" android:pathData="M42,49m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FFBBDEFB" android:pathData="M47,44m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF1976D2" android:pathData="M36,39m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+
+    <!-- 簇2 绿色 中等 偏右上 -->
+    <path android:fillColor="#FF43A047" android:pathData="M68,40m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF66BB6A" android:pathData="M71,37m2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"/>
+    <path android:fillColor="#FF4CAF50" android:pathData="M65,44m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF81C784" android:pathData="M69,46m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF388E3C" android:pathData="M73,43m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FF66BB6A" android:pathData="M67,49m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FFA5D6A7" android:pathData="M74,39m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+
+    <!-- 簇3 橙色 小簇 偏左下 -->
+    <path android:fillColor="#FFFF9800" android:pathData="M44,62m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FFFB8C00" android:pathData="M40,65m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FFFFB74D" android:pathData="M46,66m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FFF57C00" android:pathData="M41,69m1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"/>
+    <path android:fillColor="#FFFFCC80" android:pathData="M47,62m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+
+    <!-- 噪声点 灰色 散布 -->
+    <path android:fillColor="#FF546E7A" android:pathData="M56,36m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF607D8B" android:pathData="M58,52m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF546E7A" android:pathData="M52,42m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF455A64" android:pathData="M62,58m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF607D8B" android:pathData="M34,56m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF546E7A" android:pathData="M66,32m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path android:fillColor="#FF455A64" android:pathData="M54,64m1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+</vector>
