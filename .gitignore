@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+*.apk
+*.aab
+*.dex
+*.class
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Android
+local.properties
+*.log
+
+# Native
+.cxx/
+*.o
+*.obj
+*.so
+
+# OS
+.DS_Store
+Thumbs.db
